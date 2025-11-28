@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FinancingFormData, ValidationErrors, CalculationResult } from './types';
-import { calculatePriceTable } from './utils/calculations';
+import { calculatePriceTable, calculateSACTable } from './utils/calculations';
 import { InputGroup } from './components/UI/InputGroup';
 import { ResultsSummary } from './components/Calculator/ResultsSummary';
 import { AmortizationTable } from './components/Calculator/AmortizationTable';
 import { AmortizationChart } from './components/Calculator/AmortizationChart';
+import { ComparisonChart } from './components/Calculator/ComparisonChart';
 import { Calculator, AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -20,6 +21,7 @@ const App: React.FC = () => {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
+  const [sacResult, setSacResult] = useState<CalculationResult | null>(null);
 
   // Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -60,26 +62,36 @@ const App: React.FC = () => {
     
     if (validate()) {
       try {
-        const res = calculatePriceTable(
-          Number(formData.amount),
-          Number(formData.interestRate),
-          Number(formData.period),
-          Number(formData.downPayment),
-          formData.rateType === 'yearly',
-          formData.periodType === 'years'
+        const amount = Number(formData.amount);
+        const rate = Number(formData.interestRate);
+        const period = Number(formData.period);
+        const downPayment = Number(formData.downPayment);
+        const isRateYearly = formData.rateType === 'yearly';
+        const isPeriodYears = formData.periodType === 'years';
+
+        // Calculate Price
+        const priceRes = calculatePriceTable(
+          amount, rate, period, downPayment, isRateYearly, isPeriodYears
         );
-        setResult(res);
+        setResult(priceRes);
+
+        // Calculate SAC for comparison
+        const sacRes = calculateSACTable(
+          amount, rate, period, downPayment, isRateYearly, isPeriodYears
+        );
+        setSacResult(sacRes);
+
       } catch (err) {
         // Handle logic errors (like negative principal)
         console.error(err);
       }
     } else {
         setResult(null);
+        setSacResult(null);
     }
   };
 
-  // Auto-calculate on mount and debounce on change (optional, simpler to just press button for now or use effect)
-  // For better UX, let's trigger calculation on valid initial state
+  // Auto-calculate on mount
   useEffect(() => {
     handleCalculate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -235,7 +247,7 @@ const App: React.FC = () => {
           {/* Right Column: Results */}
           <div className="lg:col-span-8">
             {result ? (
-              <div className="animate-fadeIn">
+              <div className="animate-fadeIn pb-12">
                  <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-bold text-gray-900">Resultados da Simulação</h2>
                     <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Cálculo Realizado</span>
@@ -243,9 +255,18 @@ const App: React.FC = () => {
                  
                  <ResultsSummary results={result} />
                  
-                 <AmortizationChart data={result.schedule} />
-                 
-                 <AmortizationTable schedule={result.schedule} />
+                 <div className="grid grid-cols-1 gap-8">
+                    <AmortizationChart data={result.schedule} />
+                    
+                    {sacResult && (
+                        <ComparisonChart 
+                            priceSchedule={result.schedule} 
+                            sacSchedule={sacResult.schedule} 
+                        />
+                    )}
+                    
+                    <AmortizationTable schedule={result.schedule} />
+                 </div>
               </div>
             ) : (
                 <div className="h-full flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center text-gray-500">
@@ -260,7 +281,7 @@ const App: React.FC = () => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-12 py-8">
+      <footer className="bg-white border-t border-gray-200 mt-auto py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
           <p className="mb-2">&copy; {new Date().getFullYear()} Sousa de Oliveira Consultoria.</p>
           <p>
