@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FinancingFormData, ValidationErrors, CalculationResult } from './types';
-import { calculatePriceTable, calculateSACTable } from './utils/calculations';
+import { calculatePriceTable } from './utils/calculations';
 import { InputGroup } from './components/UI/InputGroup';
 import { ResultsSummary } from './components/Calculator/ResultsSummary';
 import { AmortizationTable } from './components/Calculator/AmortizationTable';
 import { AmortizationChart } from './components/Calculator/AmortizationChart';
-import { ComparisonChart } from './components/Calculator/ComparisonChart';
 import { Calculator, AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -21,7 +20,6 @@ const App: React.FC = () => {
 
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState<CalculationResult | null>(null);
-  const [sacResult, setSacResult] = useState<CalculationResult | null>(null);
 
   // Handlers
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -75,19 +73,12 @@ const App: React.FC = () => {
         );
         setResult(priceRes);
 
-        // Calculate SAC for comparison
-        const sacRes = calculateSACTable(
-          amount, rate, period, downPayment, isRateYearly, isPeriodYears
-        );
-        setSacResult(sacRes);
-
       } catch (err) {
         // Handle logic errors (like negative principal)
         console.error(err);
       }
     } else {
         setResult(null);
-        setSacResult(null);
     }
   };
 
@@ -125,7 +116,6 @@ const App: React.FC = () => {
           </div>
           <nav className="hidden md:flex gap-6 text-sm font-medium text-gray-500">
             <a href="#" className="hover:text-brand-600 transition-colors">Tabela Price</a>
-            <a href="#" className="hover:text-brand-600 transition-colors">Tabela SAC</a>
             <a href="#" className="hover:text-brand-600 transition-colors">Sobre</a>
           </nav>
         </div>
@@ -257,13 +247,6 @@ const App: React.FC = () => {
                  
                  <div className="grid grid-cols-1 gap-8">
                     <AmortizationChart data={result.schedule} />
-                    
-                    {sacResult && (
-                        <ComparisonChart 
-                            priceSchedule={result.schedule} 
-                            sacSchedule={sacResult.schedule} 
-                        />
-                    )}
                     
                     <AmortizationTable schedule={result.schedule} />
                  </div>
